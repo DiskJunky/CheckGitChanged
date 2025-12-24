@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using static CheckGitChanged.ColorConsole;
+using Spectre.Console;
 
 namespace CheckGitChanged;
 
@@ -20,20 +20,32 @@ public static class Program
         var command = "git";
         var arguments = "status --porcelain=v2 -uno";
 
-        int result = Run(command, 
-                         out string output, 
-                         out string error,
-                         arguments);
+        string output = string.Empty;
+        string? error = string.Empty;
+        int result = 0;
+        AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots10)
+                   .Start($"[gray]Running command: '[/][darkgoldenrod]{command} {arguments}[/][gray]'...[/]",
+                          _ =>
+                          {
+                              result = Run(command, 
+                                           out output, 
+                                           out error,
+                                           arguments);
+                              Thread.Sleep(3000);
+                          });
+        
 
-        WriteLine("");
-        WriteLine("Captured output:", ConsoleColor.White, ConsoleDecoration.Underline);
+        Console.WriteLine();
+        AnsiConsole.MarkupLine("[white underline bold]Captured output:[/]");
         if (result == 0) // success
         {
-            WriteLine(output, ConsoleColor.Cyan);
+            AnsiConsole.MarkupLine($"[cyan]{output}[/]");
         }
         else
         {
-            WriteLine(error ?? output, ConsoleColor.Red);
+            if (string.IsNullOrWhiteSpace(error)) error = null;
+            AnsiConsole.MarkupLine($"[red]{error ?? output}[/]");
         }
     }
 
@@ -55,20 +67,12 @@ public static class Program
         output = string.Empty;
         error = string.Empty;
 
-        var args = string.Join(" ", arguments);
-        var commandline = $"{command} {args}".TrimEnd();
-
-
-        Write("Running command: '", ConsoleColor.Gray);
-        Write(commandline, ConsoleColor.DarkYellow, ConsoleDecoration.Italics);
-        WriteLine("'...", ConsoleColor.Gray);
-
         var process = new Process();
         var startInfo = process.StartInfo;
         try
         {
             startInfo.FileName = command;
-            startInfo.Arguments = args;
+            startInfo.Arguments = string.Join(' ', arguments);
             startInfo.RedirectStandardOutput = true;
             startInfo.RedirectStandardError = true;
             startInfo.UseShellExecute = false;
