@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using LibGit2Sharp;
 using Spectre.Console;
 
 namespace CheckGitChanged;
@@ -15,29 +16,45 @@ public static class Program
     /// Main program entry point.
     /// </summary>
     /// <param name="args">Optional, any arguments passed to the application.</param>
-    public static void Main(string[] args)
+    public static void Main(string[]? args)
     {
-        var command = "git";
-        var arguments = "status --porcelain=v2 -uno";
+        // var command = "git";
+        // var arguments = "status --porcelain=v2 -uno";
+
+        var currentFolder = Directory.GetCurrentDirectory();
+        AnsiConsole.MarkupLine($"[gray]Current folder:[/]       [yellow]{currentFolder}[/]");
+        
+        var workingFolder = currentFolder;
+        if (args != null && args.Length > 0)
+        {
+            workingFolder = args[0];
+        }
+        AnsiConsole.MarkupLine($"[gray]Repo folder supplied:[/] [yellow]{workingFolder}[/]");
 
         string output = string.Empty;
         string? error = string.Empty;
         int result = 0;
         AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots10)
-                   .Start($"[gray]Running command: '[/][darkgoldenrod]{command} {arguments}[/][gray]'...[/]",
+                   .Start($"[gray]Querying git...[/]",
                           _ =>
                           {
-                              result = Run(command, 
-                                           out output, 
-                                           out error,
-                                           arguments);
+                              // result = Run(command, 
+                              //              out output, 
+                              //              out error,
+                              //              arguments);
+
+                              var list = GetFilesChanged(workingFolder,
+                                                         out error);
+                              output = string.Join(Environment.NewLine, list);
+                              result = list.Count > 0 ? 0 : sbyte.MinValue;
+
                               Thread.Sleep(3000);
                           });
         
 
         Console.WriteLine();
-        AnsiConsole.MarkupLine("[white underline bold]Captured output:[/]");
+        AnsiConsole.MarkupLine("[white underline bold]Git results:[/]");
         if (result == 0) // success
         {
             AnsiConsole.MarkupLine($"[cyan]{output}[/]");
@@ -50,6 +67,32 @@ public static class Program
     }
 
     #region Helper Methods
+    private static List<string> GetFilesChanged(string workingFolder,
+                                                out string error)
+    {
+        error = string.Empty;
+        var changed = new List<string>();
+
+        try
+        {
+            using (var repo = new Repository(workingFolder))
+            {
+                foreach (TreeEntryChanges c in repo.Diff.Compare<TreeChanges>(repo.Head.Tip?.Tree,
+                             DiffTargets.Index | DiffTargets.WorkingDirectory))
+                {
+                    changed.Add(c.Path ?? string.Empty);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            error = e.ToString();
+        }
+        
+        return changed;
+    }
+    
+    
     /// <summary>
     /// This runs the specified command with the arguments supplied and returns the error code
     /// and process output.
@@ -59,6 +102,7 @@ public static class Program
     /// <param name="error">The program's error output.</param>
     /// <param name="arguments">The arguments to supply with the command.</param>
     /// <returns>The process's exit code.</returns>
+    // ReSharper disable once UnusedMember.Local
     private static int Run(string command, 
                            out string output, 
                            out string error,
