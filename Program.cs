@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using CheckGitChanged;
 using static CheckGitChanged.ColorConsole;
 
 namespace CheckGitChanged;
@@ -18,8 +17,8 @@ public static class Program
     /// <param name="args">Optional, any arguments passed to the application.</param>
     public static void Main(string[] args)
     {
-        var command = "gitf";
-        var arguments = "--help";
+        var command = "git";
+        var arguments = "status --porcelain=v2 -uno";
 
         int result = Run(command, 
                          out string output, 
