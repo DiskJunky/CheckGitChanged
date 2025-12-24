@@ -49,12 +49,12 @@ public static class Program
                               output = string.Join(Environment.NewLine, list);
                               result = list.Count > 0 ? 0 : sbyte.MinValue;
 
-                              Thread.Sleep(3000);
+                              //Thread.Sleep(3000);
                           });
         
 
         Console.WriteLine();
-        AnsiConsole.MarkupLine("[white underline bold]Git results:[/]");
+        AnsiConsole.MarkupLine("[white underline bold]Git files partially added:[/]");
         if (result == 0) // success
         {
             AnsiConsole.MarkupLine($"[cyan]{output}[/]");
@@ -64,6 +64,13 @@ public static class Program
             if (string.IsNullOrWhiteSpace(error)) error = null;
             AnsiConsole.MarkupLine($"[red]{error ?? output}[/]");
         }
+        
+        // TODO: add logic to query git files fully added
+        
+        // run tool
+        
+        // get list of partially added files and find files that WERE
+        // fully added prior to the tool running
     }
 
     #region Helper Methods
@@ -77,10 +84,16 @@ public static class Program
         {
             using (var repo = new Repository(workingFolder))
             {
-                foreach (TreeEntryChanges c in repo.Diff.Compare<TreeChanges>(repo.Head.Tip?.Tree,
-                             DiffTargets.Index | DiffTargets.WorkingDirectory))
+                // foreach (TreeEntryChanges c in repo.Diff.Compare<TreeChanges>(repo.Head.Tip?.Tree,
+                //              DiffTargets.Index | DiffTargets.WorkingDirectory))
+                // {
+                //     changed.Add(c.Path ?? string.Empty);
+                // }
+                var partiallyAddedStatus = FileStatus.ModifiedInWorkdir | FileStatus.NewInIndex;
+                foreach (var item in repo.RetrieveStatus(new StatusOptions()))
                 {
-                    changed.Add(c.Path ?? string.Empty);
+                    if (item.State != partiallyAddedStatus) continue;
+                    changed.Add(item.FilePath);
                 }
             }
         }
